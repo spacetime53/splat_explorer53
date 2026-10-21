@@ -27,6 +27,7 @@ export function SplatViewer({
   toggleDebugRef,
 }: SplatViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [hasSelectedFile, setHasSelectedFile] = useState(false);
   const fileUrlRef = useRef<string | null>(null);
   const f3CleanupRef = useRef<(() => void) | undefined>(undefined);
   const sceneRef = useRef<SceneManager | null>(null);

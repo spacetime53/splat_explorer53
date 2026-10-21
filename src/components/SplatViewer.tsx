@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useState } from "react";
 import type { ChangeEvent } from "react";
 import { SceneManager } from "../viewer/SceneManager";
 import { CameraController } from "../viewer/CameraController";
@@ -173,7 +173,9 @@ export function SplatViewer({
 
       const fileUrl = URL.createObjectURL(file);
       fileUrlRef.current = fileUrl;
-
+      
+      setHasSelectedFile(true);
+      
       f3CleanupRef.current?.();
       f3CleanupRef.current = await init(fileUrl);
     },
@@ -209,6 +211,7 @@ export function SplatViewer({
         style={{ display: "block", width: "100%", height: "100%" }}
       />
 
+    {!hasSelectedFile && (
       <div
         style={{
           position: "fixed",
@@ -231,6 +234,7 @@ export function SplatViewer({
           />
         </label>
       </div>
+     )} 
     </>
   );
 

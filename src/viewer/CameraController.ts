@@ -98,16 +98,78 @@ export class CameraController {
       element: this.vrButtonContainer,
       mode: XR_MODE,
       allowMobileXr: true,
-      onReady: (supported: boolean) => {
-        console.log("[VR Debug] WebXR supported:", supported);
-        console.log("[VR Debug] Browser:", navigator.userAgent);
+      
+onReady: (supported: boolean) => {
+  console.log("[VR Debug] WebXR supported:", supported);
+  renderer.xr.enabled = false;
 
-       renderer.xr.enabled = false;
+  const container = this.vrButtonContainer;
+  if (!container || container.querySelector("button")) return;
 
-         if (this.vrButtonContainer) {
-          this.vrButtonContainer.style.display = "block";
-       }
-     },
+  // Create our own button instead of relying on SparkXr to insert one.
+  const button = document.createElement("button");
+  button.textContent = "Enter VR";
+
+  Object.assign(button.style, {
+    padding: "12px 20px",
+    margin: "8px",
+    border: "0",
+    borderRadius: "8px",
+    background: "#1769ff",
+    color: "white",
+    fontSize: "16px",
+    fontWeight: "bold",
+    cursor: "pointer",
+  });
+
+  button.addEventListener("click", async () => {
+    try {
+      const xr = (navigator as any).xr;
+
+      if (!xr) {
+        throw new Error("WebXR is unavailable in this browser.");
+      }
+
+      const canEnterVR = await xr.isSessionSupported("immersive-vr");
+      if (!canEnterVR) {
+        throw new Error("Immersive VR is not supported on this device.");
+      }
+
+      button.disabled = true;
+      button.textContent = "Starting VR…";
+
+      const session = await xr.requestSession("immersive-vr", {
+        optionalFeatures: ["local-floor", "bounded-floor", "hand-tracking"],
+      });
+
+      session.addEventListener("end", () => {
+        renderer.xr.enabled = false;
+        button.disabled = false;
+        button.textContent = "Enter VR";
+      });
+
+      renderer.xr.enabled = true;
+      await renderer.xr.setSession(session);
+
+      if (this.collisionReady && this._mode !== "walk") {
+        this.setMode("walk");
+      }
+
+      button.textContent = "Exit VR";
+      button.disabled = false;
+      button.onclick = async () => {
+        await session.end();
+      };
+    } catch (error) {
+      console.error("[VR Debug] Failed to enter VR:", error);
+      button.textContent = "Enter VR";
+      button.disabled = false;
+    }
+  });
+
+  container.appendChild(button);
+},
+
       onEnterXr: () => {
         renderer.xr.enabled = true;
         // In XR, always use walk mode if collision mesh is ready

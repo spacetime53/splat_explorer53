@@ -1,9 +1,10 @@
 import { useRef, useEffect, useCallback } from "react";
+import type { ChangeEvent } from "react";
 import { SceneManager } from "../viewer/SceneManager";
 import { CameraController } from "../viewer/CameraController";
 import { CollisionMeshGenerator } from "../viewer/CollisionMeshGenerator";
 import { loadSplat } from "../viewer/SplatLoader";
-import { SPLAT_URL, LOD_ENABLED } from "../config";
+import { LOD_ENABLED } from "../config";
 import type { ViewerState, LocomotionMode, CollisionMeshProgress } from "../viewer/types";
 import type { SplatMesh } from "@sparkjsdev/spark";
 import type { SplatBounds } from "../viewer/types";
@@ -26,11 +27,13 @@ export function SplatViewer({
   toggleDebugRef,
 }: SplatViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileUrlRef = useRef<string | null>(null);
+  const f3CleanupRef = useRef<(() => void) | undefined>(undefined);
   const sceneRef = useRef<SceneManager | null>(null);
   const controllerRef = useRef<CameraController | null>(null);
   const collisionGenRef = useRef<CollisionMeshGenerator | null>(null);
 
-  const init = useCallback(async () => {
+  const init = useCallback(async (splatUrl: string) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -58,7 +61,7 @@ export function SplatViewer({
     let loadedBounds: SplatBounds | null = null;
 
     try {
-      const { mesh, bounds } = await loadSplat(SPLAT_URL, LOD_ENABLED, (p) => {
+      const { mesh, bounds } = await loadSplat(splatUrl, LOD_ENABLED, (p) => {
         onStateChange({
           loading: true,
           progress: p.total > 0 ? p.loaded / p.total : 0,
@@ -149,32 +152,88 @@ export function SplatViewer({
     };
   }, [onStateChange, onCollisionProgress, onModeChange, resetViewRef, toggleModeRef, toggleDebugRef]);
 
+  
+  const handleFileChange = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.currentTarget.files?.[0];
+      if (!file) return;
+
+      if (!file.name.toLowerCase().endsWith(".ply")) {
+        onStateChange({
+          loading: false,
+          progress: 0,
+          error: "Please select a .ply file",
+        });
+        return;
+      }
+
+      if (fileUrlRef.current) {
+        URL.revokeObjectURL(fileUrlRef.current);
+      }
+
+      const fileUrl = URL.createObjectURL(file);
+      fileUrlRef.current = fileUrl;
+
+      f3CleanupRef.current?.();
+      f3CleanupRef.current = await init(fileUrl);
+    },
+    [init, onStateChange]
+  );
+
   useEffect(() => {
-    let f3Cleanup: (() => void) | undefined;
-
-    init().then((cleanup) => {
-      f3Cleanup = cleanup;
-    });
-
     const handleResize = () => sceneRef.current?.handleResize();
     window.addEventListener("resize", handleResize);
 
     return () => {
-      f3Cleanup?.();
+      f3CleanupRef.current?.();
       window.removeEventListener("resize", handleResize);
+
       sceneRef.current?.renderer.setAnimationLoop(null);
       controllerRef.current?.dispose();
       collisionGenRef.current?.dispose();
       sceneRef.current?.dispose();
-    };
-  }, [init]);
 
+      if (fileUrlRef.current) {
+        URL.revokeObjectURL(fileUrlRef.current);
+        fileUrlRef.current = null;
+      }
+    };
+  }, []);
+
+
+  
   return (
-    <canvas
-      ref={canvasRef}
-      style={{ display: "block", width: "100%", height: "100%" }}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        style={{ display: "block", width: "100%", height: "100%" }}
+      />
+
+      <div
+        style={{
+          position: "fixed",
+          top: 16,
+          left: 16,
+          zIndex: 10000,
+          background: "white",
+          color: "black",
+          padding: 12,
+          borderRadius: 8,
+        }}
+      >
+        <label>
+          Choose your scene (.ply)
+          <input
+            type="file"
+            accept=".ply"
+            onChange={handleFileChange}
+            style={{ display: "block", marginTop: 8, maxWidth: 280 }}
+          />
+        </label>
+      </div>
+    </>
   );
+
 }
 
 /**

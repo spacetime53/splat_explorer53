@@ -9,6 +9,7 @@ import type { ViewerState, LocomotionMode, CollisionMeshProgress } from "../view
 import type { SplatMesh } from "@sparkjsdev/spark";
 import type { SplatBounds } from "../viewer/types";
 
+
 interface SplatViewerProps {
   onStateChange: (state: ViewerState) => void;
   onCollisionProgress: (progress: CollisionMeshProgress) => void;

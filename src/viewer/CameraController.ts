@@ -99,13 +99,15 @@ export class CameraController {
       mode: XR_MODE,
       allowMobileXr: true,
       onReady: (supported: boolean) => {
-        // SparkXr just set renderer.xr.enabled = true — undo it.
-        // We'll re-enable when user actually enters an XR session.
-        renderer.xr.enabled = false;
-        if (!supported && this.vrButtonContainer) {
-          this.vrButtonContainer.style.display = "none";
-        }
-      },
+        console.log("[VR Debug] WebXR supported:", supported);
+        console.log("[VR Debug] Browser:", navigator.userAgent);
+
+       renderer.xr.enabled = false;
+
+         if (this.vrButtonContainer) {
+          this.vrButtonContainer.style.display = "block";
+       }
+     },
       onEnterXr: () => {
         renderer.xr.enabled = true;
         // In XR, always use walk mode if collision mesh is ready
